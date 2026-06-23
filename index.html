@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Respec Progress Engine</title>
+    <style>
+        :root {
+            --bg-dark: #121212; --card-bg: #1a1a1a; --input-bg: #0a0a0a;
+            --text-main: #e0e0e0; --text-dim: #888888; --accent-green: #487243;
+            --accent-green-hover: #578a51; --border-color: #2c2c2c;
+        }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: system-ui, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; font-weight: 600; }
+        input, select { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 4px; font-size: 1rem; }
+        .btn-submit { background-color: var(--accent-green); color: white; border: none; padding: 12px; font-size: 1rem; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 25px; }
+        .btn-submit:hover { background-color: var(--accent-green-hover); }
+        .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .results-grid { grid-template-columns: 1fr; } }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 20px; }
+        .card h3 { margin-top: 0; font-size: 0.95rem; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        ul { list-style: none; padding: 0; margin: 15px 0; }
+        li { margin-bottom: 8px; font-size: 0.95rem; }
+        .timeline-container { margin-top: 25px; background: #111; padding: 10px; border-radius: 4px; border: 1px solid #222; }
+        .timeline-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 6px; }
+        .avg-label { color: #fff; font-weight: bold; }
+        .timeline-bar { position: relative; height: 8px; background: #252525; border-radius: 4px; overflow: hidden; }
+        .luck-window-bar { position: absolute; height: 100%; background: var(--accent-green); border-radius: 4px; transition: all 0.3s ease; }
+        details { margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px; cursor: pointer; }
+        summary { font-size: 0.9rem; color: var(--text-dim); font-weight: bold; }
+        .roadmap-content { padding-top: 10px; font-size: 0.9rem; color: var(--text-main); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="input-grid">
+        <div class="form-group"><label>Total Spendable Skill Points Pool</label><input type="number" id="spendable_sp" value="5000"></div>
+        <div class="form-group"><label>Current Skill-Point Sword Level</label><input type="number" id="current_sword_skill" value="10"></div>
+        <div class="form-group"><label>Current Total Sword Level</label><input type="number" id="current_sword_total" value="150"></div>
+        <div class="form-group"><label>Player VIP Title Level</label><select id="vip_tier"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+        <div class="form-group"><label>Recent fastest stage last 10 with no skill in move speed</label><input type="number" step="0.01" id="base_clear_speed" value="1.2"></div>
+        <div class="form-group"><label>What is your max stage</label><input type="number" id="max_stage" value="6500"></div>
+        <div class="form-group"><label>Speed Manager configuration level</label><input type="number" id="speed_manager_level" value="5"></div>
+        <div class="form-group"><label>Stage-skipping Companion Level</label><input type="number" id="companion_level" value="20"></div>
+        <div class="form-group"><label>Total move speed from stats (no skill points allocated)</label><input type="number" id="move_speed_base" value="478"></div>
+        <div class="form-group"><label>Current total Attack Range (in stats)</label><input type="number" id="current_attack_range" value="200"></div>
+        <div class="form-group"><label>Target Attack Range Threshold to maintain</label><select id="target_range_threshold"><option value="0">N/A</option><option value="215">215</option><option value="435">435</option></select></div>
+        <div class="form-group"><label>Current Player Account Level</label><input type="number" id="player_level" value="85"></div>
+        <div class="form-group"><label>Total raw Swords Purchased across your account</label><input type="number" id="raw_swords" value="1200"></div>
+    </div>
+    <button class="btn-submit" onclick="runOptimization()">Run Optimization Strategy</button>
+    <div class="results-grid">
+        <div class="card">
+            <h3>Strategy Model A: Standard Optimization</h3>
+            <ul id="model_a_results"><li>Click run to view allocation...</li></ul>
+            <div class="timeline-container">
+                <div class="timeline-labels"><span id="a_time_worst">Worst: --</span><span id="a_time_avg" class="avg-label">Avg: --</span><span id="a_time_best">100% Skip: --</span></div>
+                <div class="timeline-bar"><div id="a_bar_luck" class="luck-window-bar"></div></div>
+            </div>
+            <details><summary>Consolidated Allocation Roadmap (Click to Expand)</summary><div id="a_roadmap" class="roadmap-content"></div></details>
+        </div>
+        <div class="card">
+            <h3>Strategy Model B: Maximum Depth Push</h3>
+            <ul id="model_b_results"><li>Click run to view allocation...</li></ul>
+            <div class="timeline-container">
+                <div class="timeline-labels"><span id="b_time_worst">Worst: --</span><span id="b_time_avg" class="avg-label">Avg: --</span><span id="b_time_best">100% Skip: --</span></div>
+                <div class="timeline-bar"><div id="b_bar_luck" class="luck-window-bar"></div></div>
+            </div>
+            <details><summary>Consolidated Allocation Roadmap (Click to Expand)</summary><div id="b_roadmap" class="roadmap-content"></div></details>
+        </div>
+    </div>
+</div>
+<script>
+function calculateBracketCosts(start, count) {
+    let cost = 0; for (let i = 0; i < count; i++) { cost += Math.floor((start + i) / 10) + 1; } return cost;
+}
+function findNextTitleMilestone(lvl) { let rem = lvl % 150; return rem === 0 ? lvl + 150 : lvl + (150 - rem); }
+function getMilestoneUtilityWorth(target, vip, accLvl, swords) {
+    let mult = [2.0, 3.0, 4.0, 5.0, 6.0, 10.0][Math.max(0, Math.min(parseInt(vip), 5))];
+    let root = Math.pow(mult, 1.0 / 450.0); let w = 1.0;
+    if ((Math.floor(target / 150) % 3) === 2) {
+        let curG = Math.round(10.0 * swords * Math.pow(1.0002, swords));
+        let prevG = Math.round(10.0 * Math.max(1, swords - 1) * Math.pow(1.0002, Math.max(1, swords - 1)));
+        w = 0.50 * (prevG > 0 ? curG / prevG : 1.0);
+    } else if ((Math.floor(target / 150) % 3) === 0) {
+        let curX = Math.round(((100.0 + (50.0 * accLvl)) / 2.0 * accLvl) * Math.pow(1.003, accLvl));
+        let prevX = Math.round(((100.0 + (50.0 * Math.max(1, accLvl - 1))) / 2.0 * Math.max(1, accLvl - 1)) * Math.pow(1.003, Math.max(1, accLvl - 1)));
+        w = 0.35 * (prevX > 0 ? curX / prevX : 1.0);
+    }
+    return (Math.log(root) / Math.log(1.014)) * w;
+}
+function calculateRangePenaltyFactor(r) { return r >= 215.0 ? 1.0 : 1.0 + ((215.0 - r) * 0.01); }
+function calculateRangeStageWorth(r) { return r >= 435.0 ? 11.0 : (r >= 215.0 ? 5.5 : 1.0); }
+
+function runOptimization() {
+    let spPool = parseInt(document.getElementById('spendable_sp').value) || 0;
+    let swSkill = parseInt(document.getElementById('current_sword_skill').value) || 0;
+    let swTotal = parseInt(document.getElementById('current_sword_total').value) || 0;
+    let vip = parseInt(document.getElementById('vip_tier').value) || 0;
+    let bSpd = parseFloat(document.getElementById('base_clear_speed').value) || 1.0;
+    let mStage = parseInt(document.getElementById('max_stage').value) || 0;
+    let sMgr = parseInt(document.getElementById('speed_manager_level').value) || 1;
+    let cLvl = parseInt(document.getElementById('companion_level').value) || 0;
+    let mSpdBase = parseFloat(document.getElementById('move_speed_base').value) || 0;
+    let cRange = parseFloat(document.getElementById('current_attack_range').value) || 0;
+    let tRange = parseFloat(document.getElementById('target_range_threshold').value) || 0;
+    let pLvl = parseInt(document.getElementById('player_level').value) || 1;
+    let rSwords = parseInt(document.getElementById('raw_swords').value) || 0;
+
+    function simulate(mode) {
+        let rem = spPool, aSw = swSkill, aD = 0, aAs = 0, aM = 0, aR = 0;
+        let nD = 0, nAs = 0, nSw = 0, nM = 0, nR = 0, mileW = 0;
+        let autoStg = mStage < 5000 ? mStage : Math.min(40000, Math.floor(mStage * 0.80));
+        let stFlr = mStage < 5000 ? Math.floor(mStage * 0.50) : Math.floor(Math.round((autoStg / 2) / 100.0) * 100);
+        let floorsAvg = Math.max(1.0, (autoStg - stFlr) / (sMgr + ((cLvl * 0.0001 > 1.0 ? 1.0 : cLvl * 0.0001) * (100 * sMgr))));
+
+        while (rem > 0) {
+            let opts = []; let liveSw = swTotal + (aSw - swSkill);
+            let estT = floorsAvg * ((bSpd * sMgr) / (1.0 + (aM * 0.05))) * calculateRangePenaltyFactor(cRange + (aR * 0.5));
+            let allowSw = !(mode === "standard" && mStage < 5000 && ((aSw * (aSw + 1)) / 2) >= (spPool * 0.70));
+
+            if (mode === "standard") {
+                if (tRange > 0 && (cRange + (aR * 0.5)) < tRange) {
+                    let cost = calculateBracketCosts(aR, 2); if (cost <= rem) opts.push({t: "rng", c: cost, s: 999999, n: 2});
+                } else if (estT > 240.0 && mStage >= 5000) {
+                    let cost = Math.floor(aM / 10) + 1; if (cost <= rem) opts.push({t: "mv", c: cost, s: 99999, n: 1});
+                }
+            }
+            if (opts.length === 0 && mode === "max_depth" && allowSw) {
+                let cost = aSw + 1; if (cost <= rem) opts.push({t: "sw", c: cost, s: 9999999, n: 1});
+            }
+            if (opts.length === 0) {
+                let cD = calculateBracketCosts(aD, 10); if (cD <= rem) opts.push({t: "dmg", c: cD, s: Math.log(((aD + 10) * 5 + 100) / (aD * 5 + 100)) / Math.log(1.014) / cD, n: 10});
+                let cAs = calculateBracketCosts(aAs, 10); if (cAs <= rem) opts.push({t: "as", c: cAs, s: Math.log(((aAs + 10) * 1 + 100) / (aAs * 1 + 100)) / Math.log(1.014) / cAs, n: 10});
+                if (mode === "standard" && allowSw) {
+                    let nMil = findNextTitleMilestone(liveSw); let req = nMil - liveSw; let cMil = 0;
+                    for (let o = 0; o < req; o++) cMil += (aSw + 1 + o);
+                    if (cMil > 0 && cMil <= rem) opts.push({t: "mil", c: cMil, s: ((req * 7.6267) + getMilestoneUtilityWorth(nMil, vip, pLvl, rSwords)) / cMil, n: req});
+                }
+            }
+            if (opts.length === 0) break;
+            opts.sort((a, b) => b.s - a.s); let b = opts[0]; if (b.c > rem || b.c <= 0) break;
+            rem -= b.c;
+            if (b.t === "dmg") { aD += b.n; nD += b.n; } else if (b.t === "as") { aAs += b.n; nAs += b.n; }
+            else if (b.t === "sw") { aSw += b.n; nSw += b.n; } else if (b.t === "mv") { aM += b.n; nM += b.n; }
+            else if (b.t === "rng") { aR += b.n; nR += b.n; }
+            else if (b.t === "mil") { aSw += b.n; nSw += b.n; }
+        }
+        return { dmg: aD, as: aAs, mv: aM, rng: aR, sw: aSw, left: rem, nD, nAs, nM, nR, nSw };
+    }
+
+    let rA = simulate("standard"), rB = simulate("max_depth");
+    renderRes("a", rA, bSpd, sMgr, cLvl, mStage, cRange); renderRes("b", rB, bSpd, sMgr, cLvl, mStage, cRange);
+}
+
+function renderRes(p, r, bSpd, sMgr, cLvl, mStage, bRange) {
+    document.getElementById(`model_${p}_results`).innerHTML = `<li>Optimal Target Damage Level: ${r.dmg}</li><li>Optimal Target Attack Speed Level: ${r.as}</li><li>Optimal Target Move Speed Level: ${r.mv}</li><li>Optimal Target Attack Range Level: ${r.rng}</li><li>Final Expected Sword Skill Level: ${r.sw}</li><li>Remaining Unspent Spare Points: ${r.left} SP</li>`;
+    
+    let autoStg = mStage < 5000 ? mStage : Math.min(40000, Math.floor(mStage * 0.80)), stFlr = mStage < 5000 ? Math.floor(mStage * 0.50) : Math.floor(Math.round((autoStg / 2) / 100.0) * 100), totS = autoStg - stFlr;
+    let tSec = bSpd * sMgr, worst = (Math.max(1.0, totS / sMgr)) * tSec * calculateRangePenaltyFactor(bRange + (r.rng * 0.5));
+    let cP = cLvl * 0.0001 > 1.0 ? 1.0 : cLvl * 0.0001, avg = (Math.max(1.0, totS / (sMgr + (cP * (100 * sMgr))))) * (tSec / (1.0 + (r.mv * 0.05))) * calculateRangePenaltyFactor(bRange + (r.rng * 0.5));
+    let best = (Math.max(1.0, totS / (sMgr + (1.0 * (100 * sMgr))))) * (tSec / (1.0 + (r.mv * 0.05))) * calculateRangePenaltyFactor(bRange + (r.rng * 0.5));
+
+    document.getElementById(`${p}_time_worst`).innerText = `Worst: ${Math.floor(worst/60)}m ${Math.round(worst%60)}s`;
+    document.getElementById(`${p}_time_avg`).innerText = `Avg: ${Math.floor(avg/60)}m ${Math.round(avg%60)}s`;
+    document.getElementById(`${p}_time_best`).innerText = `100% Skip: ${Math.floor(best/60)}m ${Math.round(best%60)}s`;
+
+    let win = worst - best, l = win > 0 ? ((worst - (avg * 1.2)) / win) * 100 : 20, w = win > 0 ? (((avg * 1.2) - (avg * 0.95)) / win) * 100 : 50;
+    let bar = document.getElementById(`${p}_bar_luck`); bar.style.left = `${Math.max(0, Math.min(l, 80))}%`; bar.style.width = `${Math.max(10, Math.min(w, 100))}%`;
+
+    let html = "";
+    if(r.nSw > 0) html += `<div>Step 1: Buy +${r.nSw} levels in Sword Spawn (Target: Lvl ${r.sw})</div>`;
+    if(r.nD > 0) html += `<div>Step 2: Buy +${r.nD} levels in Damage (Target: Lvl ${r.dmg})</div>`;
+    if(r.nAs > 0) html += `<div>Step 3: Buy +${r.nAs} levels in Attack Speed (Target: Lvl ${r.as})</div>`;
+    document.getElementById(`${p}_roadmap`).innerHTML = html || "No stat changes required.";
+}
+</script>
+</body>
+</html>
+
