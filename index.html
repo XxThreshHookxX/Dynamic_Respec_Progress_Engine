@@ -157,7 +157,24 @@ function runOptimization() {
 }
 
 function renderRes(p, r, bSpd, sMgr, cLvl, mStage, bRange) {
-    document.getElementById(`model_${p}_results`).innerHTML = `<li>Optimal Target Damage Level: ${r.dmg}</li><li>Optimal Target Attack Speed Level: ${r.as}</li><li>Optimal Target Move Speed Level: ${r.mv}</li><li>Optimal Target Attack Range Level: ${r.rng}</li><li>Final Expected Sword Skill Level: ${r.sw}</li><li>Remaining Unspent Spare Points: ${r.left} SP</li>`;
+    // Calculate exact depth parameters based on engine formulas
+    let earnedSwordStages = r.nSw * 7.6267;
+    let initialRangeWorth = calculateRangeStageWorth(bRange);
+    let finalRangeWorth = calculateRangeStageWorth(bRange + (r.nR * 0.5));
+    let earnedRangeStages = finalRangeWorth - initialRangeWorth;
+    
+    // Total stage progress summation layout matching python
+    let netStageProgress = Math.floor(earnedSwordStages + earnedRangeStages);
+
+    document.getElementById(`model_${p}_results`).innerHTML = `
+        <li>Optimal Target Damage Level: ${r.dmg}</li>
+        <li>Optimal Target Attack Speed Level: ${r.as}</li>
+        <li>Optimal Target Move Speed Level: ${r.mv}</li>
+        <li>Optimal Target Attack Range Level: ${r.rng}</li>
+        <li>Final Expected Sword Skill Level: ${r.sw}</li>
+        <li>Remaining Unspent Spare Points: ${r.left} SP</li>
+        <li style="color: #487243; font-weight: bold;">Estimated Target Stage Progress: +${netStageProgress} stages gained</li>
+    `;
     
     let autoStg = mStage < 5000 ? mStage : Math.min(40000, Math.floor(mStage * 0.80)), stFlr = mStage < 5000 ? Math.floor(mStage * 0.50) : Math.floor(Math.round((autoStg / 2) / 100.0) * 100), totS = autoStg - stFlr;
     let tSec = bSpd * sMgr, worst = (Math.max(1.0, totS / sMgr)) * tSec * calculateRangePenaltyFactor(bRange + (r.rng * 0.5));
